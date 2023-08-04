@@ -1,46 +1,49 @@
-version: '3.9'
+version: '3.8'
 services:
-
   postgres:
-    container_name: postgres
-    image: postgres
+    image: postgres:alpine
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: masterkey
+      POSTGRES_USER: dbadmin
+    ports:
+      - "5432:5432"
+
+  redis:
+    container_name: redislocal
+    hostname: redislocal
+    image: redis:latest
+    command: redis-server
     volumes:
-      - pg-data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: 'user'
-      POSTGRES_PASSWORD: 'pass'
-      POSTGRES_DB: 'postgres'
+      - redis:/var/lib/redis
+      - redis-config:/usr/local/etc/redis/redis.conf
     ports:
-      - 5432:5432
+      - "6379:6379"
+    restart:
+      unless-stopped
+    networks:
+      - local-dev
 
-  rabbitmq:
-    container_name: rabbitmq
-    image: rabbitmq:3.8.12-management
-    ports:
-      - 5672:5672
-      - 15672:15672
-
-  app:
-    build: .
-    container_name: app
-    image: app
-    environment:
-      PG_URL: 'postgres://user:pass@postgres:5432/postgres'
-      RMQ_URL: 'amqp://guest:guest@rabbitmq:5672/'
-    ports:
-      - 8080:8080
-    depends_on:
-      - postgres
-      - rabbitmq
-
-  integration:
-    build:
-      context: .
-      dockerfile: integration-test/Dockerfile
-    container_name: integration
-    image: integration
-    depends_on:
-      - app
+#  app:
+#    build: .
+#    container_name: app
+#    image: app
+#    environment:
+#      PG_URL: 'postgres://dbadmin:masterkey@postgres:5432/postgres'
+#      RDB_HOST: redis
+#      RDB_PORT: 6379
+#      RDB_PASSWORD: ''
+#    ports:
+#      - "8080:8080"
+#    depends_on:
+#      - redis
+#    networks:
+#      - local-dev
 
 volumes:
-  pg-data:
+  redis:
+  redis-config:
+
+networks:
+  local-dev:
+    external: true

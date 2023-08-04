@@ -1,0 +1,19 @@
+app:
+  name: 'bist-tools'
+  version: '1.0.0'
+
+http:
+  port: '8080'
+
+logger:
+  level: 'debug'
+
+db:
+  url: postgres://dbadmin:masterkey@127.0.0.1/bistdb
+
+redis:
+  url: redis://localhost:6379
+
+jwt:
+  secret: my-very-secret-key
+  duration: 100

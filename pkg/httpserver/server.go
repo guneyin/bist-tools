@@ -1,67 +1,100 @@
-// Package httpserver implements HTTP server.
 package httpserver
 
 import (
-	"context"
-	"net/http"
+	"fmt"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/guneyin/bist-tools/internal/handler"
+	"github.com/guneyin/bist-tools/internal/middleware"
+	"github.com/guneyin/bist-tools/pkg/config"
 	"time"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 const (
-	_defaultReadTimeout     = 5 * time.Second
-	_defaultWriteTimeout    = 5 * time.Second
-	_defaultAddr            = ":80"
-	_defaultShutdownTimeout = 3 * time.Second
+	_defaultReadTimeout  = 5 * time.Second
+	_defaultWriteTimeout = 5 * time.Second
 )
 
-// Server -.
-type Server struct {
-	server          *http.Server
-	notify          chan error
-	shutdownTimeout time.Duration
+type HttpMethod string
+
+const (
+	GET    HttpMethod = "GET"
+	POST              = "POST"
+	PATCH             = "PATCH"
+	DELETE            = "DELETE"
+)
+
+type server struct {
+	app *fiber.App
+	api fiber.Router
+	//logger *logger.Logger
+	port string
 }
 
-// New -.
-func New(handler http.Handler, opts ...Option) *Server {
-	httpServer := &http.Server{
-		Handler:      handler,
-		ReadTimeout:  _defaultReadTimeout,
-		WriteTimeout: _defaultWriteTimeout,
-		Addr:         _defaultAddr,
+var srv *server
+
+func Init() error {
+	f := fiber.New(fiber.Config{
+		ServerHeader:      "Fiber",
+		AppName:           "BIST Tools",
+		EnablePrintRoutes: true,
+		ReadTimeout:       _defaultReadTimeout,
+		WriteTimeout:      _defaultWriteTimeout,
+	})
+
+	f.Use(cors.New())
+
+	srv = &server{
+		app: f,
+		api: f.Group("/api"),
+		//logger: l,
+		port: config.Cfg.HTTP.Port,
 	}
 
-	s := &Server{
-		server:          httpServer,
-		notify:          make(chan error, 1),
-		shutdownTimeout: _defaultShutdownTimeout,
+	srv.setRoutes()
+
+	return srv.start()
+}
+
+func (s *server) setRoutes() {
+	// General
+	s.registerHandler("/", GET, handler.GeneralStatus)
+
+	// Auth
+	s.registerHandler("/auth/login", POST, handler.Login)
+
+	// User
+	s.registerHandler("/user/me", GET, middleware.Protected(), handler.UserMe)
+	s.registerHandler("/user/:id", GET, handler.GetUser)
+	s.registerHandler("/user", POST, handler.CreateUser)
+	s.registerHandler("/user/:id", PATCH, middleware.Protected(), handler.UpdateUser)
+	s.registerHandler("/user/:id", DELETE, middleware.Protected(), handler.DeleteUser)
+
+	// Broker
+	s.registerHandler("/broker/list", GET, handler.BrokerList)
+
+	// Importer
+	s.registerHandler("/importer/import", POST, middleware.Protected(), handler.ImporterImport)
+	s.registerHandler("/importer/apply", GET, middleware.Protected(), handler.ImporterApply)
+
+	//	Transaction
+	s.registerHandler("/transactions/get", GET, middleware.Protected(), handler.TransactionsGet)
+}
+
+func (s *server) registerHandler(path string, method HttpMethod, handlers ...fiber.Handler) {
+	switch method {
+	case GET:
+		s.api.Get(path, handlers...)
+	case POST:
+		s.api.Post(path, handlers...)
+	case PATCH:
+		s.api.Patch(path, handlers...)
+	case DELETE:
+		s.api.Delete(path, handlers...)
 	}
-
-	// Custom options
-	for _, opt := range opts {
-		opt(s)
-	}
-
-	s.start()
-
-	return s
 }
 
-func (s *Server) start() {
-	go func() {
-		s.notify <- s.server.ListenAndServe()
-		close(s.notify)
-	}()
-}
-
-// Notify -.
-func (s *Server) Notify() <-chan error {
-	return s.notify
-}
-
-// Shutdown -.
-func (s *Server) Shutdown() error {
-	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
-	defer cancel()
-
-	return s.server.Shutdown(ctx)
+func (s *server) start() error {
+	return s.app.Listen(fmt.Sprintf(":%s", s.port))
 }
