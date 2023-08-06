@@ -16,4 +16,4 @@ redis:
 
 jwt:
   secret: my-very-secret-key
-  duration: 100
+  duration: 720

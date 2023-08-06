@@ -1,14 +1,20 @@
 package handler
 
 import (
+	"errors"
+	"github.com/gofiber/fiber/v2"
+	"github.com/guneyin/bist-tools/internal/middleware"
 	"github.com/guneyin/bist-tools/internal/repo/user"
 	"github.com/guneyin/bist-tools/pkg/config"
+	"github.com/guneyin/bist-tools/pkg/jwtauth"
+	"golang.org/x/crypto/bcrypt"
 	"net/mail"
 	"time"
+)
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
+var (
+	errErrorOnLoginRequest = errors.New("ERROR_ON_LOGIN_REQUEST")
+	errInvalidPassword     = errors.New("INVALID_PASSWORD")
 )
 
 func CheckPasswordHash(password, hash string) bool {
@@ -26,13 +32,13 @@ func Login(c *fiber.Ctx) error {
 		Password string `json:"password"`
 	}
 
-	input := new(LoginInput)
-	if err := c.BodyParser(&input); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Error on login request", "data": err})
+	li := new(LoginInput)
+	if err := c.BodyParser(&li); err != nil {
+		return middleware.RaiseHTTPError(c, errErrorOnLoginRequest)
 	}
 
-	identity := input.Identity
-	pass := input.Password
+	identity := li.Identity
+	pass := li.Password
 	usr, err := new(user.User), *new(error)
 
 	if isEmail(identity) {
@@ -42,24 +48,30 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	if usr == nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "error", "message": "User not found", "data": err})
+		return middleware.RaiseHTTPError(c, err)
 	}
 
 	if !CheckPasswordHash(pass, usr.Password) {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "error", "message": "Invalid password", "data": nil})
+		return middleware.RaiseHTTPError(c, errInvalidPassword)
 	}
 
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	claims := token.Claims.(jwt.MapClaims)
-	claims["username"] = usr.UserName
-	claims["user_id"] = usr.ID
-	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
-
-	t, err := token.SignedString([]byte(config.Cfg.Secret))
+	token, err := jwtauth.CreateToken(usr.ID.String(), usr.UserName)
 	if err != nil {
-		return c.SendStatus(fiber.StatusInternalServerError)
+		return middleware.RaiseHTTPError(c, err)
 	}
 
-	return c.JSON(fiber.Map{"status": "success", "message": "Success login", "data": t})
+	c.Cookie(&fiber.Cookie{
+		Name:        "auth-token",
+		Value:       token,
+		Path:        "",
+		Domain:      "",
+		MaxAge:      0,
+		Expires:     time.Now().Add(time.Hour * time.Duration(config.Cfg.Duration)),
+		Secure:      true,
+		HTTPOnly:    true,
+		SameSite:    "",
+		SessionOnly: false,
+	})
+
+	return middleware.SendHTTPSuccess(c, "login successful", nil)
 }

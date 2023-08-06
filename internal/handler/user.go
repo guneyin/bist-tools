@@ -52,7 +52,6 @@ var (
 	errInvalidPayload = errors.New("INVALID_PAYLOAD")
 )
 
-// GetUser get a user
 func GetUser(c *fiber.Ctx) error {
 	uid := c.Params("id")
 
@@ -64,7 +63,6 @@ func GetUser(c *fiber.Ctx) error {
 	return middleware.SendHTTPSuccess(c, "user found", u.Safe())
 }
 
-// UserMe get logged user
 func UserMe(c *fiber.Ctx) error {
 	uid := middleware.GetUserID(c)
 
@@ -76,7 +74,6 @@ func UserMe(c *fiber.Ctx) error {
 	return middleware.SendHTTPSuccess(c, "user found", u.Safe())
 }
 
-// CreateUser new user
 func CreateUser(c *fiber.Ctx) error {
 	u := new(user.User)
 	if err := c.BodyParser(u); err != nil {
@@ -97,7 +94,6 @@ func CreateUser(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "success", "message": "Created user", "data": created.Safe()})
 }
 
-// UpdateUser update user
 func UpdateUser(c *fiber.Ctx) error {
 	type UpdateUserInput struct {
 		Names string `json:"names"`
@@ -122,7 +118,6 @@ func UpdateUser(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "success", "message": "User successfully updated", "data": user})
 }
 
-// DeleteUser delete user
 func DeleteUser(c *fiber.Ctx) error {
 	type PasswordInput struct {
 		Password string `json:"password"`

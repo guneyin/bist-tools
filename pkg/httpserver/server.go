@@ -26,9 +26,8 @@ const (
 )
 
 type server struct {
-	app *fiber.App
-	api fiber.Router
-	//logger *logger.Logger
+	app  *fiber.App
+	api  fiber.Router
 	port string
 }
 
@@ -38,7 +37,7 @@ func Init() error {
 	f := fiber.New(fiber.Config{
 		ServerHeader:      "Fiber",
 		AppName:           "BIST Tools",
-		EnablePrintRoutes: true,
+		EnablePrintRoutes: false,
 		ReadTimeout:       _defaultReadTimeout,
 		WriteTimeout:      _defaultWriteTimeout,
 	})
@@ -46,9 +45,8 @@ func Init() error {
 	f.Use(cors.New())
 
 	srv = &server{
-		app: f,
-		api: f.Group("/api"),
-		//logger: l,
+		app:  f,
+		api:  f.Group("/api"),
 		port: config.Cfg.HTTP.Port,
 	}
 

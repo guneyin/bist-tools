@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -9,11 +8,9 @@ import (
 	"github.com/guneyin/bist-tools/pkg/config"
 )
 
-var ErrUserNotFound = fmt.Errorf("USER_NOT_FOUND")
-
-// Protected protect routes
 func Protected() fiber.Handler {
 	return jwtware.New(jwtware.Config{
+		TokenLookup:  "cookie:auth-token",
 		SigningKey:   jwtware.SigningKey{Key: []byte(config.Cfg.JWT.Secret)},
 		ErrorHandler: jwtError,
 	})

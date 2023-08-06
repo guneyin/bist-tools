@@ -40,7 +40,7 @@ type (
 
 	JWT struct {
 		Secret   string `env-required:"true" yaml:"secret" env:"JWT_SECRET"`
-		Duration string `env-required:"true" yaml:"duration" env:"JWT_DURATION"`
+		Duration int64  `env-required:"true" yaml:"duration" env:"JWT_DURATION"`
 	}
 )
 

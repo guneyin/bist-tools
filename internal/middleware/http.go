@@ -7,5 +7,5 @@ func RaiseHTTPError(c *fiber.Ctx, err error) error {
 }
 
 func SendHTTPSuccess(c *fiber.Ctx, msg string, data any) error {
-	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "success", "message": msg, "data": data})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": msg, "data": data})
 }
